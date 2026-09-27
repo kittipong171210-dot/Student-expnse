@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบบันทึกรายรับ-รายจ่ายสำหรับนักเรียน</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Noto Sans Thai",sans-serif;background:#f3f6fb;color:#172033}
+header{background:linear-gradient(135deg,#172554,#2563eb);color:white;padding:28px 18px;text-align:center}
+header h1{margin:0 0 8px;font-size:clamp(24px,5vw,38px)}
+header p{margin:0;opacity:.9}
+.container{max-width:1000px;margin:22px auto;padding:0 14px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{background:white;border-radius:18px;padding:18px;box-shadow:0 4px 18px #00000012}
+.stat{font-size:28px;font-weight:800;margin-top:6px}
+.income{color:#15803d}.expense{color:#dc2626}.balance{color:#1d4ed8}
+.form{display:grid;grid-template-columns:1fr 1.5fr 1fr 1fr auto;gap:10px;align-items:end}
+label{font-size:13px;font-weight:700;display:block;margin-bottom:5px}
+input,select,button{width:100%;padding:11px;border:1px solid #d5dbea;border-radius:10px;font:inherit}
+button{cursor:pointer;border:0;font-weight:700}
+.primary{background:#2563eb;color:white}.danger{background:#fee2e2;color:#991b1b}
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.actions button{width:auto;padding:10px 14px}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{padding:11px 8px;border-bottom:1px solid #e8ebf2;text-align:left}
+th{background:#f8fafc}
+.empty{text-align:center;color:#6b7280;padding:25px}
+footer{text-align:center;color:#6b7280;padding:25px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.form{grid-template-columns:1fr 1fr}.form button{grid-column:1/-1}.tablewrap{overflow:auto}table{min-width:650px}}
+</style>
+</head>
+<body>
+<header>
+<h1>ระบบบันทึกรายรับ–รายจ่ายสำหรับนักเรียน</h1>
+<p>โครงงานวิทยาการคำนวณ | นายกิตติพงษ์ ไชยกุล ม.4/1 เลขที่ 3</p>
+</header>
+
+<div class="container">
+<section class="grid">
+<div class="card"><div>รายรับทั้งหมด</div><div id="income" class="stat income">฿0.00</div></div>
+<div class="card"><div>รายจ่ายทั้งหมด</div><div id="expense" class="stat expense">฿0.00</div></div>
+<div class="card"><div>เงินคงเหลือ</div><div id="balance" class="stat balance">฿0.00</div></div>
+</section>
+
+<section class="card" style="margin-top:16px">
+<h2>เพิ่มรายการ</h2>
+<div class="form">
+<div><label>วันที่</label><input id="date" type="date"></div>
+<div><label>รายการ</label><input id="item" placeholder="เช่น ค่าอาหาร"></div>
+<div><label>ประเภท</label><select id="type"><option value="income">รายรับ</option><option value="expense">รายจ่าย</option></select></div>
+<div><label>จำนวนเงิน (บาท)</label><input id="amount" type="number" min="0" step="0.01" placeholder="0"></div>
+<button class="primary" onclick="addItem()">เพิ่มรายการ</button>
+</div>
+<div class="actions">
+<button onclick="exportCSV()">ดาวน์โหลดข้อมูล CSV</button>
+<button class="danger" onclick="clearAll()">ล้างข้อมูลทั้งหมด</button>
+</div>
+</section>
+
+<section class="card" style="margin-top:16px">
+<h2>รายการทั้งหมด</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>วันที่</th><th>รายการ</th><th>ประเภท</th><th>จำนวนเงิน</th><th>ลบ</th></tr></thead>
+<tbody id="rows"></tbody>
+</table>
+</div>
+<div id="empty" class="empty">ยังไม่มีรายการ</div>
+</section>
+</div>
+
+<footer>ข้อมูลจะถูกเก็บไว้ในอุปกรณ์นี้ด้วย Local Storage</footer>
+
+<script>
+const KEY="student-finance-v1";
+let data=JSON.parse(localStorage.getItem(KEY)||"[]");
+const $=id=>document.getElementById(id);
+$("date").value=new Date().toISOString().slice(0,10);
+
+function money(n){return new Intl.NumberFormat("th-TH",{style:"currency",currency:"THB"}).format(n)}
+function save(){localStorage.setItem(KEY,JSON.stringify(data)); render()}
+function addItem(){
+ const item=$("item").value.trim(), amount=Number($("amount").value), date=$("date").value, type=$("type").value;
+ if(!item || !date || !amount || amount<=0){alert("กรุณากรอกวันที่ รายการ และจำนวนเงินให้ครบ");return}
+ data.push({id:Date.now(),date,item,amount,type}); save();
+ $("item").value=""; $("amount").value=""; $("item").focus();
+}
+function removeItem(id){data=data.filter(x=>x.id!==id);save()}
+function render(){
+ let inc=data.filter(x=>x.type==="income").reduce((s,x)=>s+x.amount,0);
+ let exp=data.filter(x=>x.type==="expense").reduce((s,x)=>s+x.amount,0);
+ $("income").textContent=money(inc); $("expense").textContent=money(exp); $("balance").textContent=money(inc-exp);
+ $("rows").innerHTML=data.slice().reverse().map(x=>`<tr>
+ <td>${x.date}</td><td>${escapeHtml(x.item)}</td><td>${x.type==="income"?"รายรับ":"รายจ่าย"}</td>
+ <td>${money(x.amount)}</td><td><button class="danger" onclick="removeItem(${x.id})">ลบ</button></td></tr>`).join("");
+ $("empty").style.display=data.length?"none":"block";
+}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function clearAll(){if(data.length && confirm("ต้องการล้างข้อมูลทั้งหมดหรือไม่?")){data=[];save()}}
+function exportCSV(){
+ if(!data.length){alert("ยังไม่มีข้อมูลให้ดาวน์โหลด");return}
+ let csv="\uFEFFวันที่,รายการ,ประเภท,จำนวนเงิน\n"+data.map(x=>`${x.date},"${x.item.replaceAll('"','""')}",${x.type==="income"?"รายรับ":"รายจ่าย"},${x.amount}`).join("\n");
+ let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="รายรับรายจ่าย.csv";a.click();URL.revokeObjectURL(a.href);
+}
+render();
+</script>
+</body>
+</html>
